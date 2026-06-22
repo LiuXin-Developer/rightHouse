@@ -2,6 +2,8 @@
 
 'use strict';
 
+const { INSECURE_DEFAULT_JWT_SECRET } = require('./constants');
+
 /**
  * @param {Egg.EggAppInfo} appInfo app info
  */
@@ -105,9 +107,27 @@ module.exports = appInfo => {
       enable: false
     }
   };
-  // jwt
+  // jwt（生产环境请通过环境变量 JWT_SECRET 设置强随机密钥）
+  const jwtSecret = process.env.JWT_SECRET || INSECURE_DEFAULT_JWT_SECRET;
+  const usingInsecureJwtSecret = !process.env.JWT_SECRET || jwtSecret === INSECURE_DEFAULT_JWT_SECRET;
+  if (usingInsecureJwtSecret) {
+    // eslint-disable-next-line no-console
+    console.warn([
+      '========== SECURITY WARNING ==========',
+      'JWT secret is using the default/insecure value.',
+      'Anyone with access to this open-source project can forge authentication tokens.',
+      'Set the JWT_SECRET environment variable to a strong random secret before deploying.',
+      'Example: JWT_SECRET=<your-random-secret> npm start',
+      '======================================'
+    ].join('\n'));
+    if (process.env.EGG_SERVER_ENV === 'prod') {
+      throw new Error(
+        'Refusing to start in production with insecure default JWT secret. Set JWT_SECRET environment variable.'
+      );
+    }
+  }
   config.jwt = {
-    secret: 'right_house',
+    secret: jwtSecret,
     sign: {
       expiresIn: 604800 // 过期时间
     }
